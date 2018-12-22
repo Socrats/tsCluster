@@ -1,3 +1,4 @@
+# distutils: language=c++
 """
 Implements the Unsupervised conditional random fields algorithm at
 Li, C.T., Yuan, Y. and Wilson, R., 2008. An unsupervised conditional
@@ -22,7 +23,6 @@ crfsUnsupervised. CRFs unsupervised clustering of time-series
 
 """
 
-# distutils: language=c++
 import numpy as np
 cimport numpy as np
 from libcpp cimport bool
