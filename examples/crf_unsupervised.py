@@ -7,43 +7,21 @@ mus = [[40, 45, 100],
        [55, 120, 120],
        [120, 50, 120]]
 var = 64
-std = np.sqrt(var)
+std = var ** 0.5
 
 # Parametrization of the voting pool
 k = 18
-s = 9
+s = 1
 m = 3
+nb_clusters = 5
 size_dataset = 5 * 30
 iterations = 100
 total_error = 0.
 total_ri = 0.
 
 
-# def count_errors(classes, learnedClasses):
-#     uniqueClasses = frozenset(classes)
-#     uniqueLearnedClasses = frozenset(learnedClasses)
-#
-#     corr = zip(classes,
-#                learnedClasses)
-# # Correspondence vector: corr[x] = (i, j) means that i was associated with j for sequence x
-#
-#     # Find correspondance between classes and learnedClasses:
-#     # The (i, j) correspondence that appears the most means i=j
-#     errs = 0
-#     corrList = []
-#     for i in uniqueClasses:
-#         maxCorr = 0
-#         for j in uniqueLearnedClasses:
-#             errs += corr.count((i, j))
-#             if corr.count((i, j)) > maxCorr:
-#                 maxCorr = corr.count((i, j))
-#                 corrVal = j
-#         corrList.append(corrVal)
-#
-#     for i, j in enumerate(corrList):
-#         errs -= corr.count((i, j))
-#
-#     return errs, corrList
+def transform_dataset(ts):
+    return ts
 
 
 def gen_ts():
@@ -52,21 +30,31 @@ def gen_ts():
         for j, mu in enumerate(cluster):
             time_series[i * 30:(i * 30) + 30, j] = np.random.normal(mu, std, size=30)
 
-    transformed_ts = time_series[:, 1:] - time_series[:, :-1]
-    labels = np.arange(transformed_ts.shape[0])
+    labels = np.arange(time_series.shape[0])
     np.random.shuffle(labels)
-    return time_series, labels
+    return transform_dataset(time_series[labels]), labels, get_clusters(labels)
 
 
-def rand_index(inferred_clusters):
+def get_clusters(labels):
+    clusters = []
+    for i in range(nb_clusters):
+        clusters.append(np.where((labels < ((i*30) + 30)) & (labels >= (i*30)))[0])
+    return clusters
+
+
+def rand_index(inferred_clusters, real_clusters):
     TP = 0.
     TN = 0.
     # first we count the nb of pairs that have correctly been put in the same cluster
     for i in range(size_dataset):
         # define i cluster
-        cluster1 = i // 30
+        for idx, cluster in enumerate(real_clusters):
+            if i in cluster:
+                cluster1 = idx
         for j in range(i + 1, size_dataset):
-            cluster2 = j // 30
+            for idx, cluster in enumerate(real_clusters):
+                if j in cluster:
+                    cluster2 = idx
             if cluster1 == cluster2:
                 if inferred_clusters[i] == inferred_clusters[j]:
                     # True positive
@@ -82,9 +70,11 @@ def rand_index(inferred_clusters):
 if __name__ == "__main__":
     # Calculate the Rand Index
     for i in range(iterations):
-        transformed_ts, labels = gen_ts()
+        np.random.seed()
+        transformed_ts, labels, clusters = gen_ts()
         new_labels = cluster_ts(transformed_ts, labels, k, s, m, max_iterations=500)
-        ri = rand_index(new_labels)
+
+        ri = rand_index(new_labels, clusters)
         error = 1 - ri
         print('iteration {}: (ri {}, error {}, nb_cluster {})'.format(i, ri, error,
                                                                       np.unique(new_labels).shape[0]))

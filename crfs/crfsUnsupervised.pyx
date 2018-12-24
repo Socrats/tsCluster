@@ -86,7 +86,7 @@ cdef INTYPE_t check_labels(np.ndarray[DTYPE_t, ndim=2] pool, np.ndarray[INTYPE_t
             costs[index1] += distances[index2] if (unique_labels[index1] == labels[index2]) else -distances[index2]
     return unique_labels[np.argmin(costs)]
 
-cdef DTYPE_t estimate_d(np.ndarray[DTYPE_t, ndim=2] ts, np.ndarray[INTYPE_t] ts_index,
+cdef DTYPE_t estimate_d(np.ndarray[DTYPE_t, ndim=2] ts,
                         np.ndarray[INTYPE_t] voting_pool,
                         int focal,
                         int m):
@@ -101,12 +101,12 @@ cdef DTYPE_t estimate_d(np.ndarray[DTYPE_t, ndim=2] ts, np.ndarray[INTYPE_t] ts_
     :return: estimation of the threshold between inter- and intra-class distances (D)
     """
     cdef DTYPE_t d = 0
-    tmp = np.random.choice(ts_index[ts_index != focal], size=m, replace=False)
-    dst = np.linalg.norm(ts[focal] - ts[tmp], axis=1)
-    d += np.min(dst) + np.max(dst)
+    # tmp = np.random.choice(voting_pool, size=m, replace=False)
+    # dst = np.linalg.norm(ts[focal] - ts[tmp], axis=1)
+    # d += np.min(dst) + np.max(dst)
     for i in voting_pool:
         # get m random members
-        tmp = np.random.choice(ts_index[ts_index != i], size=m, replace=False)
+        tmp = np.random.choice(voting_pool, size=m, replace=False)
         dst = np.linalg.norm(ts[i] - ts[tmp], axis=1)
         d += np.min(dst) + np.max(dst)
     return d / float(2 * len(voting_pool))
@@ -152,7 +152,7 @@ cpdef np.ndarray[INTYPE_t] cluster_ts(np.ndarray[DTYPE_t, ndim=2] ts, np.ndarray
             voting_pool[i, :] = update_voting_pool(ts, voting_pool[i], ts_index, i, k, s)
 
             # infer D for the members of the voting pool
-            D = estimate_d(ts, ts_index, voting_pool[i], i, m)
+            D = estimate_d(ts, voting_pool[i], i, m)
 
             # Calculate the cost functions of the labels of the members in the voting pool and returns the most
             # likely label
