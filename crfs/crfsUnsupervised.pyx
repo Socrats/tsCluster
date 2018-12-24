@@ -30,7 +30,6 @@ from libcpp cimport bool
 ctypedef np.float_t DTYPE_t
 ctypedef np.int_t INTYPE_t
 
-
 # cdef np.ndarray[DTYPE_t] euclidean_dist(np.ndarray[DTYPE_t] t1, np.ndarray[DTYPE_t, ndim=2] t2):
 #     return np.sqrt(np.sum((t1-t2)**2, axis=1))
 
@@ -62,7 +61,7 @@ cdef np.ndarray[INTYPE_t] update_voting_pool(np.ndarray[DTYPE_t, ndim=2] pool, n
     return voting_pool
 
 cdef INTYPE_t check_labels(np.ndarray[DTYPE_t, ndim=2] pool, np.ndarray[INTYPE_t] labels,
-                           np.ndarray[INTYPE_t] voting_pool, DTYPE_t D):
+                           np.ndarray[INTYPE_t] voting_pool, DTYPE_t D, int focal):
     """
     @brief Calculate the potentials of each member of the voting pool with respect to the focal player, 
     then calculate the costs of each label and select the label that minimizes the costs.
@@ -71,23 +70,46 @@ cdef INTYPE_t check_labels(np.ndarray[DTYPE_t, ndim=2] pool, np.ndarray[INTYPE_t
     :arg labels: labels of the voting pool members
     :arg voting_pool: array of indexes to the members of the voting pool
     :arg D: threshold dividing the set of euclidean distances
+    :arg focal: focal player
     :return label with highest conditional probability
     """
     cdef int i, j
     cdef int nvpool = len(voting_pool)
-    cdef np.ndarray[INTYPE_t] unique_labels = np.unique(labels)
+    cdef np.ndarray[INTYPE_t] unique_labels = np.unique(np.append(labels, focal))
     cdef int nulabels = len(unique_labels)
     cdef np.ndarray[DTYPE_t] costs = np.zeros(shape=(nulabels,))
-    cdef np.ndarray[DTYPE_t] distances
+    cdef np.ndarray[DTYPE_t] distances = np.linalg.norm(pool[focal] - pool[voting_pool], axis=1) - D
 
     # Calculate the costs of each label
     for index1 in range(nulabels):
-        for i in voting_pool[labels == unique_labels[index1]]:
-            distances = np.linalg.norm(pool[i] - pool[voting_pool], axis=1) - D
-            for index2, j in enumerate(voting_pool):
-                if i == j: continue
-                costs[index1] += distances[index2] if (unique_labels[index1] == labels[index2]) else -distances[index2]
+        for index2, j in enumerate(voting_pool):
+            costs[index1] += distances[index2] if (unique_labels[index1] == labels[index2]) else -distances[index2]
     return unique_labels[np.argmin(costs)]
+
+cdef DTYPE_t estimate_d(np.ndarray[DTYPE_t, ndim=2] ts, np.ndarray[INTYPE_t] ts_index,
+                        np.ndarray[INTYPE_t] voting_pool,
+                        int focal,
+                        int m):
+    """
+    Estimates the threshold between inter- and intra-class distances (D)
+    
+    :param ts: pointer to time-series dataset
+    :param ts_index: pointer to indexes to the dataset
+    :param voting_pool: pointer to array of indexes of the members of the voting pool
+    :param focal: focal player
+    :param m: number of randomly sampled time-series used to estimate D
+    :return: estimation of the threshold between inter- and intra-class distances (D)
+    """
+    cdef DTYPE_t d = 0
+    tmp = np.random.choice(ts_index[ts_index != focal], size=m, replace=False)
+    dst = np.linalg.norm(ts[focal] - ts[tmp], axis=1)
+    d += np.min(dst) + np.max(dst)
+    for i in voting_pool:
+        # get m random members
+        tmp = np.random.choice(ts_index[ts_index != i], size=m, replace=False)
+        dst = np.linalg.norm(ts[i] - ts[tmp], axis=1)
+        d += np.min(dst) + np.max(dst)
+    return d / float(2 * len(voting_pool))
 
 cpdef np.ndarray[INTYPE_t] cluster_ts(np.ndarray[DTYPE_t, ndim=2] ts, np.ndarray[INTYPE_t] labels, int k, int s, int m,
                                       int max_iterations=50, bool inplace=False):
@@ -103,15 +125,12 @@ cpdef np.ndarray[INTYPE_t] cluster_ts(np.ndarray[DTYPE_t, ndim=2] ts, np.ndarray
     :arg inplace: if True, modifies labels directly, else, generates a copy of labels and returns it
     :return array of new labels
     """
-    assert k > 1
-    assert s > 0
+    assert k > 2
 
     cdef int i = 0;
     cdef int iterations = 0;
     cdef int new_label;
     cdef int nts = len(ts)
-    cdef DTYPE_t d = 0.
-    cdef DTYPE_t D = 0.
     cdef bool label_updated = True;
     cdef np.ndarray[INTYPE_t, ndim=2] voting_pool = np.zeros(shape=(nts, k), dtype=np.int64)
     cdef np.ndarray[INTYPE_t] ts_index = np.arange(nts)
@@ -123,11 +142,6 @@ cpdef np.ndarray[INTYPE_t] cluster_ts(np.ndarray[DTYPE_t, ndim=2] ts, np.ndarray
 
     for i in range(nts):
         voting_pool[i, :] = np.random.choice(ts_index[ts_index != i], size=k, replace=False)
-        # get m random members
-        tmp = np.random.choice(voting_pool[voting_pool != i], size=m, replace=False)
-        dst = np.linalg.norm(ts[i] - ts[tmp], axis=1)
-        d += np.min(dst) + np.max(dst)
-    D = d / (2. * nts)
 
     while label_updated:
         # print('[', iterations, '] label 0: ', labels_copy[0])
@@ -136,15 +150,21 @@ cpdef np.ndarray[INTYPE_t] cluster_ts(np.ndarray[DTYPE_t, ndim=2] ts, np.ndarray
         for i in range(nts):
             # create the voting pool
             voting_pool[i, :] = update_voting_pool(ts, voting_pool[i], ts_index, i, k, s)
-            # Calculate the cost functions of the labels of the members in the voting pool
-            new_label = check_labels(ts, labels_copy[voting_pool[i]], voting_pool[i], D)
+
+            # infer D for the members of the voting pool
+            D = estimate_d(ts, ts_index, voting_pool[i], i, m)
+
+            # Calculate the cost functions of the labels of the members in the voting pool and returns the most
+            # likely label
+            new_label = check_labels(ts, labels_copy[voting_pool[i]], voting_pool[i], D, i)
+
             # Check if the label has been updated
             if new_label != labels_copy[i]:
                 label_updated = True
                 labels_copy[i] = new_label
+
         iterations += 1
-        if iterations % 10 == 0:
-            print('Iteration: ', iterations)
+        if iterations % 10 == 0: print('Iteration: ', iterations)
         if iterations >= max_iterations: break
 
     return labels_copy
