@@ -40,9 +40,14 @@ cdef np.ndarray[INTYPE_t] update_voting_pool(np.ndarray[DTYPE_t, ndim=2] pool, n
     """
     The voting pool is formed by selecting s MS time series, 1 MD
     and k-s-1 time series selcted at random
+    
+    :arg pool: reference to the time series dataset
+    :arg voting_pool: reference to the existing voting pool
+    :arg ts_index: array of indexes for the dataset samples
+    :arg focal: current focal time-series
+    :arg k: size of the voting pool
+    :arg s: number of MS members
     """
-    assert k > 1
-    assert s > 0
     cdef np.ndarray[DTYPE_t] distances
 
     # First we get k-s-1 random time-series
@@ -50,16 +55,23 @@ cdef np.ndarray[INTYPE_t] update_voting_pool(np.ndarray[DTYPE_t, ndim=2] pool, n
         ts_index[(ts_index != voting_pool[-1]) & np.isin(ts_index, voting_pool[:s], invert=True)],
         size=k - s - 1, replace=False)
 
-    # Then we find s most similar (MS) time-series and the most differnt (MD)
+    # Then we find s most similar (MS) time-series and the most different (MD)
     distances = np.linalg.norm(pool[focal] - pool[voting_pool], axis=1)
     voting_pool[:] = voting_pool[distances.argsort()]
 
     return voting_pool
 
 cdef INTYPE_t check_labels(np.ndarray[DTYPE_t, ndim=2] pool, np.ndarray[INTYPE_t] labels,
-                           np.ndarray[INTYPE_t] voting_pool, int m, DTYPE_t D):
+                           np.ndarray[INTYPE_t] voting_pool, DTYPE_t D):
     """
-    Calculate the potentials of each member of the voting pool with respect to the focal player
+    @brief Calculate the potentials of each member of the voting pool with respect to the focal player, 
+    then calculate the costs of each label and select the label that minimizes the costs.
+    
+    :arg pool: reference to the time series dataset
+    :arg labels: labels of the voting pool members
+    :arg voting_pool: array of indexes to the members of the voting pool
+    :arg D: threshold dividing the set of euclidean distances
+    :return label with highest conditional probability
     """
     cdef int i, j
     cdef int nvpool = len(voting_pool)
@@ -80,11 +92,20 @@ cdef INTYPE_t check_labels(np.ndarray[DTYPE_t, ndim=2] pool, np.ndarray[INTYPE_t
 cpdef np.ndarray[INTYPE_t] cluster_ts(np.ndarray[DTYPE_t, ndim=2] ts, np.ndarray[INTYPE_t] labels, int k, int s, int m,
                                       int max_iterations=50, bool inplace=False):
     """
-    ts: time-series samples
-    k: size of the voting pool
-    s: number of most similar players selected for the voting pool
-    m: number of time-series to which the distance is compared
+    @brief clusters ts using the CRFs algorithm described in (Li, C.T., Yuan, Y. and Wilson, R., 2008)
+    
+    :arg ts: time-series samples
+    :arg labels: initial labels of the time-series samples
+    :arg k: size of the voting pool
+    :arg s: number of most similar players selected for the voting pool
+    :arg m: number of time-series to which the distance is compared
+    :arg max_iterations: max number of iterations that the algorithm is allowed to take
+    :arg inplace: if True, modifies labels directly, else, generates a copy of labels and returns it
+    :return array of new labels
     """
+    assert k > 1
+    assert s > 0
+
     cdef int i = 0;
     cdef int iterations = 0;
     cdef int new_label;
@@ -116,7 +137,7 @@ cpdef np.ndarray[INTYPE_t] cluster_ts(np.ndarray[DTYPE_t, ndim=2] ts, np.ndarray
             # create the voting pool
             voting_pool[i, :] = update_voting_pool(ts, voting_pool[i], ts_index, i, k, s)
             # Calculate the cost functions of the labels of the members in the voting pool
-            new_label = check_labels(ts, labels_copy[voting_pool[i]], voting_pool[i], m, D)
+            new_label = check_labels(ts, labels_copy[voting_pool[i]], voting_pool[i], D)
             # Check if the label has been updated
             if new_label != labels_copy[i]:
                 label_updated = True

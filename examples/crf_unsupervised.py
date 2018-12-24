@@ -6,7 +6,7 @@ mus = [[40, 45, 100],
        [65, 100, 80],
        [55, 120, 120],
        [120, 50, 120]]
-var = 20
+var = 64
 std = np.sqrt(var)
 
 time_series = np.zeros(shape=(30 * 5, 3), dtype=np.float64)
