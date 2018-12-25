@@ -6,7 +6,7 @@ setup(
     name='tsCluster',
     version='0.0.1',
     packages=['crfs'],
-    ext_modules=cythonize("crfs/crfsUnsupervised.pyx"),
+    ext_modules=cythonize("tscluster/crfs/crfsUnsupervised.pyx"),
     include_dirs=[np.get_include()],
     url='',
     license='GNU General Public License v3.0',

@@ -1,5 +1,5 @@
 import numpy as np
-from crfs.crfsUnsupervised import cluster_ts
+from tscluster.crfs.crfsUnsupervised import cluster_ts
 
 mus = [[40, 45, 100],
        [85, 60, 100],
@@ -10,8 +10,8 @@ var = 64
 std = var ** 0.5
 
 # Parametrization of the voting pool
-k = 18
-s = 1
+k = 15
+s = 7
 m = 3
 nb_clusters = 5
 size_dataset = 5 * 30

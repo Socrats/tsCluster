@@ -149,7 +149,7 @@ cpdef np.ndarray[INTYPE_t] cluster_ts(np.ndarray[DTYPE_t, ndim=2] ts, np.ndarray
         # First let's calculate the potentials
         for i in range(nts):
             # create the voting pool
-            voting_pool[i, :] = update_voting_pool(ts, voting_pool[i], ts_index, i, k, s)
+            update_voting_pool(ts, voting_pool[i], ts_index, i, k, s)
 
             # infer D for the members of the voting pool
             D = estimate_d(ts, voting_pool[i], i, m)
