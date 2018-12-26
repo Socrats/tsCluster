@@ -4,7 +4,7 @@ import numpy as np
 
 setup(
     name='tsCluster',
-    version='0.0.1',
+    version='0.0.2b',
     packages=['crfs'],
     ext_modules=cythonize("tscluster/crfs/crfsUnsupervised.pyx"),
     include_dirs=[np.get_include()],
