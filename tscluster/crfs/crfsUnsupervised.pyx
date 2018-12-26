@@ -34,18 +34,19 @@ ctypedef np.int_t INTYPE_t
 #     return np.sqrt(np.sum((t1-t2)**2, axis=1))
 
 
-cdef np.ndarray[INTYPE_t] update_voting_pool(np.ndarray[DTYPE_t, ndim=2] pool, np.ndarray[INTYPE_t] voting_pool,
+cdef update_voting_pool(np.ndarray[DTYPE_t, ndim=2] pool, np.ndarray[INTYPE_t] voting_pool,
                                              np.ndarray[INTYPE_t] ts_index, int focal, int k, int s):
     """
     The voting pool is formed by selecting s MS time series, 1 MD
     and k-s-1 time series selcted at random
     
-    :arg pool: reference to the time series dataset
-    :arg voting_pool: reference to the existing voting pool
-    :arg ts_index: array of indexes for the dataset samples
-    :arg focal: current focal time-series
-    :arg k: size of the voting pool
-    :arg s: number of MS members
+    :param pool: reference to the time series dataset
+    :param voting_pool: reference to the existing voting pool
+    :param ts_index: array of indexes for the dataset samples
+    :param focal: current focal time-series
+    :param k: size of the voting pool
+    :param s: number of MS members
+    :return void: the voting pool is updated by a pointer
     """
     cdef np.ndarray[DTYPE_t] distances
 
@@ -66,11 +67,11 @@ cdef INTYPE_t check_labels(np.ndarray[DTYPE_t, ndim=2] pool, np.ndarray[INTYPE_t
     @brief Calculate the potentials of each member of the voting pool with respect to the focal player, 
     then calculate the costs of each label and select the label that minimizes the costs.
     
-    :arg pool: reference to the time series dataset
-    :arg labels: labels of the voting pool members
-    :arg voting_pool: array of indexes to the members of the voting pool
-    :arg D: threshold dividing the set of euclidean distances
-    :arg focal: focal player
+    :param pool: reference to the time series dataset
+    :param labels: labels of the voting pool members
+    :param voting_pool: array of indexes to the members of the voting pool
+    :param D: threshold dividing the set of euclidean distances
+    :param focal: focal player
     :return label with highest conditional probability
     """
     cdef int i, j
@@ -91,10 +92,9 @@ cdef DTYPE_t estimate_d(np.ndarray[DTYPE_t, ndim=2] ts,
                         int focal,
                         int m):
     """
-    Estimates the threshold between inter- and intra-class distances (D)
+    @brief Estimates the threshold between inter- and intra-class distances (D)
     
     :param ts: pointer to time-series dataset
-    :param ts_index: pointer to indexes to the dataset
     :param voting_pool: pointer to array of indexes of the members of the voting pool
     :param focal: focal player
     :param m: number of randomly sampled time-series used to estimate D
@@ -104,25 +104,26 @@ cdef DTYPE_t estimate_d(np.ndarray[DTYPE_t, ndim=2] ts,
     # tmp = np.random.choice(voting_pool, size=m, replace=False)
     # dst = np.linalg.norm(ts[focal] - ts[tmp], axis=1)
     # d += np.min(dst) + np.max(dst)
+    # return 0.5 * (np.min(dst) + np.max(dst))
     for i in voting_pool:
         # get m random members
-        tmp = np.random.choice(voting_pool, size=m, replace=False)
+        tmp = np.random.choice(voting_pool[voting_pool != i], size=m, replace=False)
         dst = np.linalg.norm(ts[i] - ts[tmp], axis=1)
         d += np.min(dst) + np.max(dst)
-    return d / float(2 * len(voting_pool))
+    return d / float(2 * (len(voting_pool) + 1))
 
 cpdef np.ndarray[INTYPE_t] cluster_ts(np.ndarray[DTYPE_t, ndim=2] ts, np.ndarray[INTYPE_t] labels, int k, int s, int m,
                                       int max_iterations=50, bool inplace=False):
     """
     @brief clusters ts using the CRFs algorithm described in (Li, C.T., Yuan, Y. and Wilson, R., 2008)
     
-    :arg ts: time-series samples
-    :arg labels: initial labels of the time-series samples
-    :arg k: size of the voting pool
-    :arg s: number of most similar players selected for the voting pool
-    :arg m: number of time-series to which the distance is compared
-    :arg max_iterations: max number of iterations that the algorithm is allowed to take
-    :arg inplace: if True, modifies labels directly, else, generates a copy of labels and returns it
+    :param ts: time-series samples
+    :param labels: initial labels of the time-series samples
+    :param k: size of the voting pool
+    :param s: number of most similar players selected for the voting pool
+    :param m: number of time-series to which the distance is compared
+    :param max_iterations: max number of iterations that the algorithm is allowed to take
+    :param inplace: if True, modifies labels directly, else, generates a copy of labels and returns it
     :return array of new labels
     """
     assert k > 2

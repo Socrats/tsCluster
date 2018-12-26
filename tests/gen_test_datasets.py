@@ -24,7 +24,7 @@ def gen_simple_dataset():
 def gen_artbio_dataset():
     # Create test datasets
     nb_clusters = 5
-    alpha = np.arange(0.1, 1.0, 1.0/nb_clusters)
+    alpha = np.arange(0.5, 2.0, 1.0/nb_clusters)
     beta = np.arange(2.0, 1.0, -1.0/nb_clusters)
     epsilon = np.random.normal(0, 1, size=5)
     t = np.arange(20)
@@ -45,7 +45,7 @@ def gen_artbio_dataset():
     labels = np.arange(transformed_ts.shape[0])
     np.random.shuffle(labels)
 
-    return transformed_ts[labels], labels, get_clusters(labels, len(alpha), sizes)
+    return transformed_ts[labels], labels, get_clusters(labels, nb_clusters, sizes)
 
 
 def get_clusters(labels, nb_clusters, sizes):

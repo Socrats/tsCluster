@@ -2,14 +2,6 @@ import numpy as np
 from tscluster.crfs.crfsUnsupervised import cluster_ts
 from tests.gen_test_datasets import gen_ts
 
-# mus = [[40, 45, 100],
-#        [85, 60, 100],
-#        [65, 100, 80],
-#        [55, 120, 120],
-#        [120, 50, 120]]
-# var = 64
-# std = var ** 0.5
-#
 # Parametrization of the voting pool
 k = 12
 s = k // 2
@@ -18,28 +10,6 @@ m = 3
 iterations = 100
 total_error = 0.
 total_ri = 0.
-#
-#
-# def transform_dataset(ts):
-#     return ts
-#
-#
-# def gen_ts():
-#     time_series = np.zeros(shape=(30 * 5, 3), dtype=np.float64)
-#     for i, cluster in enumerate(mus):
-#         for j, mu in enumerate(cluster):
-#             time_series[i * 30:(i * 30) + 30, j] = np.random.normal(mu, std, size=30)
-#
-#     labels = np.arange(time_series.shape[0])
-#     np.random.shuffle(labels)
-#     return transform_dataset(time_series[labels]), labels, get_clusters(labels)
-#
-#
-# def get_clusters(labels):
-#     clusters = []
-#     for i in range(nb_clusters):
-#         clusters.append(np.where((labels < ((i*30) + 30)) & (labels >= (i*30)))[0])
-#     return clusters
 
 
 def rand_index(inferred_clusters, real_clusters, size_dataset):
