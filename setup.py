@@ -4,9 +4,10 @@ import numpy as np
 
 setup(
     name='tsCluster',
-    version='0.0.2b',
+    version='0.0.2',
     packages=['crfs'],
-    ext_modules=cythonize("tscluster/crfs/crfsUnsupervised.pyx"),
+    ext_modules=cythonize("tscluster/clustering/crfs/crfsUnsupervised.pyx"),
+    zip_safe=False,
     include_dirs=[np.get_include()],
     url='',
     license='GNU General Public License v3.0',

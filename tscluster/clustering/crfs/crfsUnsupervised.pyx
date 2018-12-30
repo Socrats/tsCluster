@@ -1,4 +1,3 @@
-# distutils: language=c++
 """
 Implements the Unsupervised conditional random fields algorithm at
 Li, C.T., Yuan, Y. and Wilson, R., 2008. An unsupervised conditional
@@ -25,7 +24,7 @@ crfsUnsupervised. CRFs unsupervised clustering of time-series
 
 import numpy as np
 cimport numpy as np
-from libcpp cimport bool
+# from libcpp cimport bool
 
 ctypedef np.float_t DTYPE_t
 ctypedef np.int_t INTYPE_t
@@ -113,7 +112,7 @@ cdef DTYPE_t estimate_d(np.ndarray[DTYPE_t, ndim=2] ts,
     return d / float(2 * (len(voting_pool) + 1))
 
 cpdef np.ndarray[INTYPE_t] cluster_ts(np.ndarray[DTYPE_t, ndim=2] ts, np.ndarray[INTYPE_t] labels, int k, int s, int m,
-                                      int max_iterations=50, bool inplace=False):
+                                      int max_iterations=50, bint inplace=False):
     """
     @brief clusters ts using the CRFs algorithm described in (Li, C.T., Yuan, Y. and Wilson, R., 2008)
     
@@ -132,7 +131,7 @@ cpdef np.ndarray[INTYPE_t] cluster_ts(np.ndarray[DTYPE_t, ndim=2] ts, np.ndarray
     cdef int iterations = 0;
     cdef int new_label;
     cdef int nts = len(ts)
-    cdef bool label_updated = True;
+    cdef bint label_updated = True;
     cdef np.ndarray[INTYPE_t, ndim=2] voting_pool = np.zeros(shape=(nts, k), dtype=np.int64)
     cdef np.ndarray[INTYPE_t] ts_index = np.arange(nts)
 

@@ -1,5 +1,5 @@
 import numpy as np
-from tscluster.crfs.crfsUnsupervised import cluster_ts
+from tscluster.clustering.crfs.crfsUnsupervised import cluster_ts
 from tests.gen_test_datasets import gen_ts
 
 # Parametrization of the voting pool
