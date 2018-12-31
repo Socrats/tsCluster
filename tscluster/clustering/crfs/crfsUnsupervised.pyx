@@ -1,3 +1,7 @@
+# cython: infer_types=True
+# cython: boundscheck=False
+# cython: wraparound=False
+
 """
 Implements the Unsupervised conditional random fields algorithm at
 Li, C.T., Yuan, Y. and Wilson, R., 2008. An unsupervised conditional
@@ -24,13 +28,9 @@ crfsUnsupervised. CRFs unsupervised clustering of time-series
 
 import numpy as np
 cimport numpy as np
-# from libcpp cimport bool
 
 ctypedef np.float_t DTYPE_t
 ctypedef np.int_t INTYPE_t
-
-# cdef np.ndarray[DTYPE_t] euclidean_dist(np.ndarray[DTYPE_t] t1, np.ndarray[DTYPE_t, ndim=2] t2):
-#     return np.sqrt(np.sum((t1-t2)**2, axis=1))
 
 
 cdef update_voting_pool(np.ndarray[DTYPE_t, ndim=2] pool, np.ndarray[INTYPE_t] voting_pool,
@@ -48,10 +48,11 @@ cdef update_voting_pool(np.ndarray[DTYPE_t, ndim=2] pool, np.ndarray[INTYPE_t] v
     :return void: the voting pool is updated by a pointer
     """
     cdef np.ndarray[DTYPE_t] distances
+    cdef int pos_md = voting_pool.shape[0] - 1
 
     # First we get k-s-1 random time-series
-    voting_pool[s:-1] = np.random.choice(
-        ts_index[(ts_index != voting_pool[-1]) & np.isin(ts_index, voting_pool[:s], invert=True)],
+    voting_pool[s:pos_md] = np.random.choice(
+        ts_index[(ts_index != voting_pool[pos_md]) & np.isin(ts_index, voting_pool[:s], invert=True)],
         size=k - s - 1, replace=False)
 
     # Then we find s most similar (MS) time-series and the most different (MD)
@@ -74,9 +75,9 @@ cdef INTYPE_t check_labels(np.ndarray[DTYPE_t, ndim=2] pool, np.ndarray[INTYPE_t
     :return label with highest conditional probability
     """
     cdef int i, j
-    cdef int nvpool = len(voting_pool)
+    cdef int nvpool = voting_pool.shape[0]
     cdef np.ndarray[INTYPE_t] unique_labels = np.unique(np.append(labels, focal))
-    cdef int nulabels = len(unique_labels)
+    cdef int nulabels = unique_labels.shape[0]
     cdef np.ndarray[DTYPE_t] costs = np.zeros(shape=(nulabels,))
     cdef np.ndarray[DTYPE_t] distances = np.linalg.norm(pool[focal] - pool[voting_pool], axis=1) - D
 
@@ -109,7 +110,7 @@ cdef DTYPE_t estimate_d(np.ndarray[DTYPE_t, ndim=2] ts,
         tmp = np.random.choice(voting_pool[voting_pool != i], size=m, replace=False)
         dst = np.linalg.norm(ts[i] - ts[tmp], axis=1)
         d += np.min(dst) + np.max(dst)
-    return d / float(2 * (len(voting_pool) + 1))
+    return d / float(2 * (voting_pool.shape[0] + 1))
 
 cpdef np.ndarray[INTYPE_t] cluster_ts(np.ndarray[DTYPE_t, ndim=2] ts, np.ndarray[INTYPE_t] labels, int k, int s, int m,
                                       int max_iterations=50, bint inplace=False):
@@ -130,7 +131,7 @@ cpdef np.ndarray[INTYPE_t] cluster_ts(np.ndarray[DTYPE_t, ndim=2] ts, np.ndarray
     cdef int i = 0;
     cdef int iterations = 0;
     cdef int new_label;
-    cdef int nts = len(ts)
+    cdef int nts = ts.shape[0]
     cdef bint label_updated = True;
     cdef np.ndarray[INTYPE_t, ndim=2] voting_pool = np.zeros(shape=(nts, k), dtype=np.int64)
     cdef np.ndarray[INTYPE_t] ts_index = np.arange(nts)
