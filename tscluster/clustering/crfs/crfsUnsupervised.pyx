@@ -37,7 +37,7 @@ cdef update_voting_pool(np.ndarray[DTYPE_t, ndim=2] pool, np.ndarray[INTYPE_t] v
                                              np.ndarray[INTYPE_t] ts_index, int focal, int k, int s):
     """
     The voting pool is formed by selecting s MS time series, 1 MD
-    and k-s-1 time series selcted at random
+    and k-s-1 time series selected at random
     
     :param pool: reference to the time series dataset
     :param voting_pool: reference to the existing voting pool
@@ -101,16 +101,12 @@ cdef DTYPE_t estimate_d(np.ndarray[DTYPE_t, ndim=2] ts,
     :return: estimation of the threshold between inter- and intra-class distances (D)
     """
     cdef DTYPE_t d = 0
-    # tmp = np.random.choice(voting_pool, size=m, replace=False)
-    # dst = np.linalg.norm(ts[focal] - ts[tmp], axis=1)
-    # d += np.min(dst) + np.max(dst)
-    # return 0.5 * (np.min(dst) + np.max(dst))
     for i in voting_pool:
         # get m random members
         tmp = np.random.choice(voting_pool[voting_pool != i], size=m, replace=False)
         dst = np.linalg.norm(ts[i] - ts[tmp], axis=1)
         d += np.min(dst) + np.max(dst)
-    return d / float(2 * (voting_pool.shape[0] + 1))
+    return d / float(2 * voting_pool.shape[0])
 
 cpdef np.ndarray[INTYPE_t] cluster_ts(np.ndarray[DTYPE_t, ndim=2] ts, np.ndarray[INTYPE_t] labels, int k, int s, int m,
                                       int max_iterations=50, bint inplace=False):
